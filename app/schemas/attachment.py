@@ -28,3 +28,18 @@ class AttachmentResponse(BaseModel):
     context_type: str | None
     context_id: uuid.UUID | None
     created_at: datetime
+
+class ResolveResponse(BaseModel):
+    url: str
+
+class BatchRequest(BaseModel):
+    attachment_ids: list[uuid.UUID]
+
+class ResolvedAttachment(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id:uuid.UUID
+    filename: str
+    content_type: str
+    size: int | None
+    url: str

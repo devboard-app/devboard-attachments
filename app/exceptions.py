@@ -15,3 +15,10 @@ class FileNotUploadedException(Exception):
 
 class FileSizeMissmatchException(Exception):
     pass
+
+
+class NotAttachmentOwnerException(Exception):
+    pass
+
+class AttachmentNotStoredException(Exception):
+    pass

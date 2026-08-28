@@ -47,6 +47,21 @@ async def presign_put(key: str) -> str:
             ExpiresIn=settings.PRESIGNED_URL_TTL_SECONDS,
         )
 
+async def presign_get(key: str, filename: str, content_type: str) -> str:
+    disposition = "inline" if content_type.startswith("image/") else "attachment"
+    safe_name = filename.replace('"', "").replace("\n", "").replace("\r", "")
+    params = {
+        "Bucket": settings.S3_BUCKET,
+        "Key": key,
+        "ResponseContentType": content_type,
+        "ResponseContentDisposition": f'{disposition}; filename="{safe_name}"',
+    }
+    async with get_public_s3() as s3:
+        return await s3.generate_presigned_url(
+            "get_object",
+            Params=params,
+            ExpiresIn=settings.PRESIGNED_URL_TTL_SECONDS,
+        )
 
 async def stat_object(key: str) -> int | None:
     async with get_s3() as s3:
