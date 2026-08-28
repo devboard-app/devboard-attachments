@@ -9,3 +9,9 @@ class InvalidTypeFileException(Exception):
 
 class FileTooLargeException(Exception):
     pass
+
+class FileNotUploadedException(Exception):
+    pass
+
+class FileSizeMissmatchException(Exception):
+    pass

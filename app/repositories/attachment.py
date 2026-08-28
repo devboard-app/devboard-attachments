@@ -39,3 +39,16 @@ async def create_pending(
     await db.flush()
     await db.refresh(attachment)
     return attachment
+
+async def get_attachment_by_id(attachment_id: uuid.UUID, db: AsyncSession) -> Attachment | None:
+    result = await db.execute(select(Attachment).where(Attachment.id==attachment_id))
+    return result.scalar_one_or_none()
+
+async def mark_attachment_stored(attachment: Attachment, real_size: int, db: AsyncSession) -> None:
+    attachment.status = StatusEnum.stored
+    attachment.size = real_size
+    await db.flush()
+
+async def delete_attachment(attachment: Attachment, db: AsyncSession) -> None:
+    await db.delete(attachment)
+    await db.flush()
