@@ -7,13 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.exceptions import (
     AttachmentNotFoundException,
+    AttachmentNotStoredException,
     FileNotUploadedException,
     FileSizeMissmatchException,
     FileTooLargeException,
     InvalidTypeFileException,
+    NotAttachmentOwnerException,
     TooManyAttachmentsException,
-    AttachmentNotStoredException,
-    NotAttachmentOwnerException
 )
 from app.models.attachment import Attachment, StatusEnum
 from app.repositories.attachment import (
@@ -21,11 +21,17 @@ from app.repositories.attachment import (
     create_pending,
     delete_attachment,
     get_attachment_by_id,
-    mark_attachment_stored,
     get_stored_by_ids,
+    mark_attachment_stored,
 )
 from app.schemas.attachment import UploadRequest, UploadResponse
-from app.storage import delete_object, download_object, presign_put, stat_object, presign_get
+from app.storage import (
+    delete_object,
+    download_object,
+    presign_get,
+    presign_put,
+    stat_object,
+)
 
 FORMAT_TO_TYPE = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}
 MAX_PER_CONTEXT = 5

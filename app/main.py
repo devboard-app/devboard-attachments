@@ -7,8 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.exception_handlers import register_exception_handlers
-from app.routers import attachments
-from app.routers import internal
+from app.routers import attachments, internal
 from app.storage import ensure_bucket
 
 
