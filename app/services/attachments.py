@@ -12,6 +12,8 @@ from app.exceptions import (
     FileTooLargeException,
     InvalidTypeFileException,
     TooManyAttachmentsException,
+    AttachmentNotStoredException,
+    NotAttachmentOwnerException
 )
 from app.models.attachment import Attachment, StatusEnum
 from app.repositories.attachment import (
@@ -20,9 +22,10 @@ from app.repositories.attachment import (
     delete_attachment,
     get_attachment_by_id,
     mark_attachment_stored,
+    get_stored_by_ids,
 )
 from app.schemas.attachment import UploadRequest, UploadResponse
-from app.storage import delete_object, download_object, presign_put, stat_object
+from app.storage import delete_object, download_object, presign_put, stat_object, presign_get
 
 FORMAT_TO_TYPE = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}
 MAX_PER_CONTEXT = 5
@@ -117,3 +120,29 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: Asyn
     await mark_attachment_stored(attachment, real_size, db)
     await db.commit()
     return attachment
+
+async def resolve_url(attachment_id: uuid.UUID, db: AsyncSession) -> str:
+    attachment = await get_attachment_by_id(attachment_id, db)
+    if attachment is None:
+        raise AttachmentNotFoundException()
+    if attachment.status != StatusEnum.stored:
+        raise AttachmentNotStoredException()
+    return await presign_get(attachment.storage_key, attachment.filename, attachment.content_type)
+
+async def delete_by_id(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> None:
+    attachment = await get_attachment_by_id(attachment_id, db)
+    if attachment is None:
+        raise AttachmentNotFoundException()
+    if attachment.owner_id != owner_id:
+        raise NotAttachmentOwnerException()
+    await delete_object(attachment.storage_key)
+    await delete_attachment(attachment, db)
+    await db.commit()
+
+async def resolve_batch(ids: list[uuid.UUID], db: AsyncSession) -> list[dict]:
+    attachments = await get_stored_by_ids(ids, db)
+    out = []
+    for a in attachments:
+        url = await presign_get(a.storage_key, a.filename, a.content_type)
+        out.append({"id": a.id, "filename": a.filename, "content_type": a.content_type, "size": a.size, "url": url})
+    return out

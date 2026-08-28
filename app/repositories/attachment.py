@@ -52,3 +52,11 @@ async def mark_attachment_stored(attachment: Attachment, real_size: int, db: Asy
 async def delete_attachment(attachment: Attachment, db: AsyncSession) -> None:
     await db.delete(attachment)
     await db.flush()
+
+async def get_stored_by_ids(ids: list[uuid.UUID], db: AsyncSession) -> list[Attachment]:
+    if not ids:
+        return []
+    result = await db.execute(
+        select(Attachment).where(Attachment.id.in_(ids), Attachment.status == StatusEnum.stored)
+    )
+    return list(result.scalars().all())

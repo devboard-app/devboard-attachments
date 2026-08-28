@@ -3,10 +3,12 @@ from fastapi.responses import JSONResponse
 
 from app.exceptions import (
     AttachmentNotFoundException,
+    AttachmentNotStoredException,
     FileNotUploadedException,
     FileSizeMissmatchException,
     FileTooLargeException,
     InvalidTypeFileException,
+    NotAttachmentOwnerException,
     TooManyAttachmentsException,
 )
 
@@ -35,3 +37,11 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(FileSizeMissmatchException)
     async def file_size_missmatch_handler(request, exc):
         return JSONResponse(status_code=409, content={"detail": "File size missmatch."})
+    
+    @app.exception_handler(NotAttachmentOwnerException)
+    async def not_attachment_owner_handler(request, exc):
+        return JSONResponse(status_code=403, content={"detail": "Forbidden."})
+    
+    @app.exception_handler(AttachmentNotStoredException)
+    async def attachment_not_stored_handler(request, exc):
+        return JSONResponse(status_code=409, content={"detail": "Attachment is not stored."})
