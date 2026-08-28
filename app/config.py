@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     S3_ENDPOINT_URL: str
+    S3_PUBLIC_ENDPOINT_URL: str
     S3_BUCKET: str
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
