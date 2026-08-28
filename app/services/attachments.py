@@ -1,20 +1,61 @@
 import uuid
+from io import BytesIO
 
+from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.exceptions import (
+    AttachmentNotFoundException,
+    FileNotUploadedException,
+    FileSizeMissmatchException,
     FileTooLargeException,
     InvalidTypeFileException,
     TooManyAttachmentsException,
 )
-from app.repositories.attachment import count_by_context, create_pending
+from app.models.attachment import Attachment, StatusEnum
+from app.repositories.attachment import (
+    count_by_context,
+    create_pending,
+    delete_attachment,
+    get_attachment_by_id,
+    mark_attachment_stored,
+)
 from app.schemas.attachment import UploadRequest, UploadResponse
-from app.storage import presign_put
+from app.storage import delete_object, download_object, presign_put, stat_object
 
-ALLOWED_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+FORMAT_TO_TYPE = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}
 MAX_PER_CONTEXT = 5
 
+
+def _valid_image(data: bytes, content_type: str) -> bool:
+    try:
+        with Image.open(BytesIO(data)) as img:
+            fmt = img.format
+            img.verify()
+    except Exception:  # noqa: BLE001
+        return False
+    return fmt is not None and FORMAT_TO_TYPE.get(fmt) == content_type
+
+def _valid_pdf(data: bytes, content_type: str) -> bool:
+    return data.startswith(b"%PDF-")
+
+def _valid_text(data: bytes, content_type: str) -> bool:
+    try:
+        data.decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        return False
+    
+CONTENT_VALIDATORS = {
+    "image/png":  _valid_image,
+    "image/jpeg": _valid_image,
+    "image/webp": _valid_image,
+    "image/gif":  _valid_image,
+    "application/pdf": _valid_pdf,
+    "text/plain": _valid_text,
+}
+ALLOWED_TYPES = set(CONTENT_VALIDATORS) 
 
 async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSession)-> UploadResponse:
     if data.content_type not in ALLOWED_TYPES:
@@ -43,4 +84,36 @@ async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSess
 
     upload_url = await presign_put(storage_key)
     return UploadResponse(attachment_id=attachment.id, upload_url=upload_url)
-    
+
+async def _rollback(attachment, db):
+    await delete_object(attachment.storage_key)
+    await delete_attachment(attachment, db)
+    await db.commit()
+
+async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> Attachment:
+    attachment = await get_attachment_by_id(attachment_id, db)
+    if attachment is None or attachment.owner_id != owner_id:
+        raise AttachmentNotFoundException()
+    if attachment.status == StatusEnum.stored:
+        return attachment
+
+    real_size = await stat_object(attachment.storage_key)
+    if real_size is None:
+        await _rollback(attachment, db)
+        raise FileNotUploadedException()
+    if real_size != attachment.size:
+        await _rollback(attachment, db)
+        raise FileSizeMissmatchException()
+    if real_size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+        await _rollback(attachment, db)
+        raise FileTooLargeException()
+
+    data = await download_object(attachment.storage_key)
+    validator = CONTENT_VALIDATORS.get(attachment.content_type)
+    if validator is None or not validator(data, attachment.content_type):
+        await _rollback(attachment, db)
+        raise InvalidTypeFileException()
+
+    await mark_attachment_stored(attachment, real_size, db)
+    await db.commit()
+    return attachment
