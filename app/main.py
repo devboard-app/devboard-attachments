@@ -18,9 +18,9 @@ async def health():
     return{"status": "ok"}
 
 @app.get("/health/db")
-async def health_db(db: AsyncSession = Depends(get_db)):
+async def health_db(db: AsyncSession = Depends(get_db)): # noqa: B008
     try:
         await db.execute(text("SELECT 1"))
         return JSONResponse(status_code=200, content={"status":"ok"})
-    except Exception:
+    except Exception: # noqa: BLE001
         return JSONResponse(status_code=500, content={"status":"error", "details":"db unavailable"})
