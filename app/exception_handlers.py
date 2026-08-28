@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.exceptions import (
     AttachmentNotFoundException,
+    FileTooLargeException,
     InvalidTypeFileException,
     TooManyAttachmentsException,
 )
@@ -20,3 +21,7 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(TooManyAttachmentsException)
     async def too_many_attachments_handler(request, exc):
         return JSONResponse(status_code=415, content={"detail": "Too many attachments."})
+
+    @app.exception_handler(FileTooLargeException)
+    async def file_too_large_handler(request, exc):
+        return JSONResponse(status_code=413, content={"detail": "File size too large."})

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.exception_handlers import register_exception_handlers
+from app.routers import attachments
 from app.storage import ensure_bucket
 
 
@@ -20,6 +21,7 @@ app = FastAPI(
 )
 
 register_exception_handlers(app)
+app.include_router(attachments.router)
 
 
 @app.get("/health")

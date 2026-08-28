@@ -6,3 +6,6 @@ class TooManyAttachmentsException(Exception):
     pass
 class InvalidTypeFileException(Exception):
     pass
+
+class FileTooLargeException(Exception):
+    pass

@@ -37,3 +37,11 @@ async def ensure_bucket():
             await s3.head_bucket(Bucket=settings.S3_BUCKET)
         except Exception:  # noqa: BLE001
             await s3.create_bucket(Bucket=settings.S3_BUCKET)
+
+async def presign_put(key: str) -> str:
+    async with get_public_s3() as s3:
+        return await s3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": settings.S3_BUCKET, "Key": key},
+            ExpiresIn=settings.PRESIGNED_URL_TTL_SECONDS,
+        )
