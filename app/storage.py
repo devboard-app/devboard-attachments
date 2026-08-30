@@ -48,7 +48,9 @@ async def ensure_bucket():
     s3 = get_s3() 
     try:
         await s3.head_bucket(Bucket=settings.S3_BUCKET)
-    except Exception:  # noqa: BLE001
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") not in ("404", "NoSuchBucket"):
+            raise
         await s3.create_bucket(Bucket=settings.S3_BUCKET)
 
 async def presign_put(key: str) -> str:
