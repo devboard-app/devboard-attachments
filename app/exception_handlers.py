@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
+from app.config import settings
 from app.exceptions import (
     AttachmentNotFoundException,
     AttachmentNotStoredException,
@@ -24,7 +25,7 @@ def register_exception_handlers(app: FastAPI):
     
     @app.exception_handler(TooManyAttachmentsException)
     async def too_many_attachments_handler(request, exc):
-        return JSONResponse(status_code=415, content={"detail": "Too many attachments."})
+        return JSONResponse(status_code=409, content={"detail": f"Maximum {settings.MAX_ATTACHMENTS_PER_CONTEXT} attachments per context."})
 
     @app.exception_handler(FileTooLargeException)
     async def file_too_large_handler(request, exc):

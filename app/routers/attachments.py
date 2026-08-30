@@ -28,10 +28,10 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: CurrentUser, db: As
 
 @router.get("/{attachment_id}/url", response_model=ResolveResponse)
 async def resolve(attachment_id: uuid.UUID, owner_id: CurrentUser, db: AsyncSession = Depends(get_db)): # noqa: B008
-    url = await resolve_url_service(attachment_id, db)
+    url = await resolve_url_service(attachment_id, owner_id, db)
     return ResolveResponse(url=url)
 
-@router.get("/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete(attachment_id: uuid.UUID, owner_id: CurrentUser, db: AsyncSession = Depends(get_db)): #noqa: B008
     await delete_by_id_service(attachment_id, owner_id, db)
     

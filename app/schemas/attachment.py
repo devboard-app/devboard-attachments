@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.attachment import StatusEnum
 
-
+MAX_BATCH_SIZE = 100
 class UploadRequest(BaseModel):
     filename: str
     content_type: str
@@ -33,7 +33,7 @@ class ResolveResponse(BaseModel):
     url: str
 
 class BatchRequest(BaseModel):
-    attachment_ids: list[uuid.UUID]
+    attachment_ids: list[uuid.UUID] = Field(..., max_length=MAX_BATCH_SIZE)
 
 class ResolvedAttachment(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -34,7 +34,6 @@ from app.storage import (
 )
 
 FORMAT_TO_TYPE = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp", "GIF": "image/gif"}
-MAX_PER_CONTEXT = 5
 
 
 def _valid_image(data: bytes, content_type: str) -> bool:
@@ -71,7 +70,7 @@ async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSess
         raise InvalidTypeFileException()
     if data.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise FileTooLargeException()
-    if data.context_type is not None and data.context_id is not None and await count_by_context(data.context_type, data.context_id, db) >= MAX_PER_CONTEXT:
+    if data.context_type is not None and data.context_id is not None and await count_by_context(data.context_type, data.context_id, db) >= settings.MAX_ATTACHMENTS_PER_CONTEXT:
         raise TooManyAttachmentsException()
 
 
@@ -101,8 +100,10 @@ async def _rollback(attachment, db):
 
 async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> Attachment:
     attachment = await get_attachment_by_id(attachment_id, db)
-    if attachment is None or attachment.owner_id != owner_id:
+    if attachment is None :
         raise AttachmentNotFoundException()
+    if attachment.owner_id != owner_id:
+        raise NotAttachmentOwnerException()
     if attachment.status == StatusEnum.stored:
         return attachment
 
@@ -127,10 +128,12 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: Asyn
     await db.commit()
     return attachment
 
-async def resolve_url(attachment_id: uuid.UUID, db: AsyncSession) -> str:
+async def resolve_url(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> str:
     attachment = await get_attachment_by_id(attachment_id, db)
     if attachment is None:
         raise AttachmentNotFoundException()
+    if attachment.owner_id != owner_id:
+        raise NotAttachmentOwnerException()
     if attachment.status != StatusEnum.stored:
         raise AttachmentNotStoredException()
     return await presign_get(attachment.storage_key, attachment.filename, attachment.content_type)

@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.responses import JSONResponse
@@ -8,13 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.exception_handlers import register_exception_handlers
 from app.routers import attachments, internal
-from app.storage import ensure_bucket
+from app.storage import ensure_bucket, init_storage
 
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
-    await ensure_bucket()
-    yield
+    async with AsyncExitStack() as stack:
+        await init_storage(stack)
+        await ensure_bucket()
+        yield
 
 app = FastAPI(
     title="Devboard Attachments Service", lifespan=lifespan
