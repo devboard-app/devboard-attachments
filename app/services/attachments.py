@@ -100,8 +100,10 @@ async def _rollback(attachment, db):
 
 async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> Attachment:
     attachment = await get_attachment_by_id(attachment_id, db)
-    if attachment is None or attachment.owner_id != owner_id:
+    if attachment is None :
         raise AttachmentNotFoundException()
+    if attachment.owner_id != owner_id:
+        raise NotAttachmentOwnerException()
     if attachment.status == StatusEnum.stored:
         return attachment
 
@@ -126,10 +128,12 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: Asyn
     await db.commit()
     return attachment
 
-async def resolve_url(attachment_id: uuid.UUID, db: AsyncSession) -> str:
+async def resolve_url(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> str:
     attachment = await get_attachment_by_id(attachment_id, db)
     if attachment is None:
         raise AttachmentNotFoundException()
+    if attachment.owner_id != owner_id:
+        raise NotAttachmentOwnerException()
     if attachment.status != StatusEnum.stored:
         raise AttachmentNotStoredException()
     return await presign_get(attachment.storage_key, attachment.filename, attachment.content_type)
