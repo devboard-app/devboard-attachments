@@ -34,7 +34,7 @@ class ResolveResponse(BaseModel):
 
 class BatchRequest(BaseModel):
     attachment_ids: list[uuid.UUID] = Field(..., max_length=MAX_BATCH_SIZE)
-
+    owner_id: uuid.UUID | None = None
 class ResolvedAttachment(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

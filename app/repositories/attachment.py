@@ -53,10 +53,11 @@ async def delete_attachment(attachment: Attachment, db: AsyncSession) -> None:
     await db.delete(attachment)
     await db.flush()
 
-async def get_stored_by_ids(ids: list[uuid.UUID], db: AsyncSession) -> list[Attachment]:
+async def get_stored_by_ids(ids: list[uuid.UUID], db: AsyncSession, owner_id: uuid.UUID | None = None) -> list[Attachment]:
     if not ids:
         return []
-    result = await db.execute(
-        select(Attachment).where(Attachment.id.in_(ids), Attachment.status == StatusEnum.stored)
-    )
+    query = select(Attachment).where(Attachment.id.in_(ids), Attachment.status == StatusEnum.stored)
+    if owner_id is not None:
+        query = query.where(Attachment.owner_id == owner_id)
+    result = await db.execute(query)
     return list(result.scalars().all())

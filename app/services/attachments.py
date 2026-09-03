@@ -148,8 +148,8 @@ async def delete_by_id(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncS
     await delete_attachment(attachment, db)
     await db.commit()
 
-async def resolve_batch(ids: list[uuid.UUID], db: AsyncSession) -> list[dict]:
-    attachments = await get_stored_by_ids(ids, db)
+async def resolve_batch(ids: list[uuid.UUID], db: AsyncSession, owner_id: uuid.UUID | None = None) -> list[dict]:
+    attachments = await get_stored_by_ids(ids, db, owner_id=owner_id)
     out = []
     for a in attachments:
         url = await presign_get(a.storage_key, a.filename, a.content_type)

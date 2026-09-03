@@ -12,5 +12,5 @@ router = APIRouter(prefix="/internal/attachments", tags=["internal"], dependenci
 
 @router.post("/batch", response_model=list[ResolvedAttachment])
 async def batch(body: BatchRequest, db: AsyncSession = Depends(get_db)): # noqa B008
-    return await resolve_batch(body.attachment_ids, db)
+    return await resolve_batch(body.attachment_ids, db, body.owner_id)
 
