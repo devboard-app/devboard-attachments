@@ -9,7 +9,7 @@ from app.models.attachment import Attachment, StatusEnum
 async def count_by_context(context_type: str, context_id: uuid.UUID, db: AsyncSession) -> int:
     result = await db.execute(
         select(func.count())
-        .select_from(Attachment).where(Attachment.context_type==context_type, Attachment.context_id==context_id, Attachment.status==StatusEnum.stored)
+        .select_from(Attachment).where(Attachment.context_type==context_type, Attachment.context_id==context_id)
     )   
     return result.scalar_one()
 

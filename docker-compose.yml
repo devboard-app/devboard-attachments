@@ -9,7 +9,16 @@ services:
       - "8007:8000"
     networks:
       - devboard-network
-
+      
+  devboard-attachments-cleanup:
+    build:
+      context: .
+    container_name: devboard-attachments-cleanup
+    restart: unless-stopped
+    env_file: .env
+    command: sh -c "while true; do python -m app.cleanup; sleep 900; done"
+    networks:
+      - devboard-network
 networks:
   devboard-network:
     name: devboard-network
