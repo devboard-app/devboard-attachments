@@ -11,7 +11,7 @@ from app.storage import delete_object, init_storage
 
 logger = logging.getLogger("cleanup")
 
-PENDING_MAX_AGE_HOURS = 24
+PENDING_MAX_AGE_HOURS = 1
 
 
 async def cleanup_pending(max_age_hours: int = PENDING_MAX_AGE_HOURS) -> tuple[int, int]:
