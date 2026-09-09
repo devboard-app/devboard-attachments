@@ -1,3 +1,5 @@
+name: devboard
+
 services:
   devboard-attachments:
     build:
