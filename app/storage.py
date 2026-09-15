@@ -90,3 +90,10 @@ async def download_object(key: str) -> bytes:
 
 async def delete_object(key: str) -> None:
     await get_s3().delete_object(Bucket=settings.S3_BUCKET, Key=key)
+
+async def copy_object(src_key: str, dst_key: str) -> None:
+    await get_s3().copy_object(
+        Bucket=settings.S3_BUCKET,
+        CopySource={"Bucket": settings.S3_BUCKET, "Key": src_key},
+        Key=dst_key,
+    )

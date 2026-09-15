@@ -26,6 +26,7 @@ from app.repositories.attachment import (
 )
 from app.schemas.attachment import UploadRequest, UploadResponse
 from app.storage import (
+    copy_object,
     delete_object,
     download_object,
     presign_get,
@@ -75,7 +76,7 @@ async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSess
 
 
     attachment_id = uuid.uuid4()
-    storage_key = f"{attachment_id}/{data.filename}"
+    storage_key = f"pending/{attachment_id}/{data.filename}"
 
     attachment = await create_pending(
         attachment_id=attachment_id,
@@ -123,7 +124,11 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: Asyn
     if validator is None or not validator(data, attachment.content_type):
         await _rollback(attachment, db)
         raise InvalidTypeFileException()
-
+    final_key = f"{attachment.id}/{attachment.filename}"
+    await copy_object(attachment.storage_key, final_key)
+    await delete_object(attachment.storage_key)
+    attachment.storage_key = final_key
+    
     await mark_attachment_stored(attachment, real_size, db)
     await db.commit()
     return attachment
