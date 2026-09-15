@@ -1,6 +1,7 @@
 import uuid
 from io import BytesIO
 
+from botocore.exceptions import ClientError
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -119,13 +120,17 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: Asyn
         await _rollback(attachment, db)
         raise FileTooLargeException()
 
-    data = await download_object(attachment.storage_key)
+    data, etag = await download_object(attachment.storage_key)
     validator = CONTENT_VALIDATORS.get(attachment.content_type)
     if validator is None or not validator(data, attachment.content_type):
         await _rollback(attachment, db)
         raise InvalidTypeFileException()
     final_key = f"{attachment.id}/{attachment.filename}"
-    await copy_object(attachment.storage_key, final_key)
+    try:
+        await copy_object(attachment.storage_key, final_key, if_match=etag)
+    except ClientError:
+        await _rollback(attachment, db)
+        raise FileNotUploadedException()
     await delete_object(attachment.storage_key)
     attachment.storage_key = final_key
     

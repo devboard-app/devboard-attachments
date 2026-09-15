@@ -83,17 +83,27 @@ async def stat_object(key: str) -> int | None:
     except ClientError:
         return None
 
-async def download_object(key: str) -> bytes:
+async def download_object(key: str) -> tuple[bytes, str]:
     obj = await get_s3().get_object(Bucket=settings.S3_BUCKET, Key=key)
     async with obj["Body"] as stream:
-        return await stream.read()
+        data = await stream.read()
+    return data, obj["ETag"]
 
 async def delete_object(key: str) -> None:
     await get_s3().delete_object(Bucket=settings.S3_BUCKET, Key=key)
 
-async def copy_object(src_key: str, dst_key: str) -> None:
-    await get_s3().copy_object(
-        Bucket=settings.S3_BUCKET,
-        CopySource={"Bucket": settings.S3_BUCKET, "Key": src_key},
-        Key=dst_key,
-    )
+async def copy_object(src_key: str, dst_key: str, *, if_match: str | None = None) -> None:
+    s3 = get_s3()
+    if if_match is not None:
+        await s3.copy_object(
+            Bucket=settings.S3_BUCKET,
+            CopySource={"Bucket": settings.S3_BUCKET, "Key": src_key},
+            Key=dst_key,
+            CopySourceIfMatch=if_match,
+        )
+    else:
+        await s3.copy_object(
+            Bucket=settings.S3_BUCKET,
+            CopySource={"Bucket": settings.S3_BUCKET, "Key": src_key},
+            Key=dst_key,
+        )
