@@ -59,3 +59,7 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail, "errors": None})
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request, exc):
+        return JSONResponse(status_code=500, content={"detail": "Unexpected error occurred", "errors": None})
