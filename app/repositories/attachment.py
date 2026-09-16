@@ -40,8 +40,11 @@ async def create_pending(
     await db.refresh(attachment)
     return attachment
 
-async def get_attachment_by_id(attachment_id: uuid.UUID, db: AsyncSession) -> Attachment | None:
-    result = await db.execute(select(Attachment).where(Attachment.id==attachment_id))
+async def get_attachment_by_id(attachment_id: uuid.UUID, db: AsyncSession, for_update: bool = False) -> Attachment | None:
+    query = select(Attachment).where(Attachment.id == attachment_id)
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 async def mark_attachment_stored(attachment: Attachment, real_size: int, db: AsyncSession) -> None:

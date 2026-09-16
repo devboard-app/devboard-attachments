@@ -101,7 +101,7 @@ async def _rollback(attachment, db):
     await db.commit()
 
 async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession) -> Attachment:
-    attachment = await get_attachment_by_id(attachment_id, db)
+    attachment = await get_attachment_by_id(attachment_id, db, for_update=True)
     if attachment is None :
         raise AttachmentNotFoundException()
     if attachment.owner_id != owner_id:
