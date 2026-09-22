@@ -11,7 +11,19 @@ services:
       - "8007:8000"
     networks:
       - devboard-network
-      
+  
+  devboard-attachments-worker:
+    build:
+      context: .
+    container_name: devboard-attachments-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      REDIS_URL: redis://devboard-redis:6379/0
+    command: python -m app.consumer.worker
+    networks:
+      - devboard-network
+  
   devboard-attachments-cleanup:
     build:
       context: .
