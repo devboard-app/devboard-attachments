@@ -16,5 +16,6 @@ class Settings(BaseSettings):
     INTERNAL_API_KEY: str
     DATABASE_URL: str
     DATABASE_URL_SYNC: str
+    REDIS_URL: str
 
 settings = Settings() #type: ignore
