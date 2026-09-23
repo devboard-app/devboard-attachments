@@ -1,9 +1,12 @@
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.attachment import Attachment, StatusEnum
+
+PENDING_COUNT_MAX_AGE_HOURS = 1  # matches cleanup.PENDING_MAX_AGE_HOURS
 
 
 async def create_pending(
@@ -53,3 +56,13 @@ async def get_stored_by_ids(ids: list[uuid.UUID], db: AsyncSession, owner_id: uu
         query = query.where(Attachment.owner_id == owner_id)
     result = await db.execute(query)
     return list(result.scalars().all())
+
+async def count_by_owner(owner_id: uuid.UUID, db: AsyncSession) -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=PENDING_COUNT_MAX_AGE_HOURS)
+    query = select(func.count()).select_from(Attachment).where(
+        Attachment.owner_id == owner_id,
+        (Attachment.status == StatusEnum.stored)
+        | ((Attachment.status == StatusEnum.pending) & (Attachment.created_at >= cutoff)),
+    )
+    result = await db.execute(query)
+    return result.scalar_one()

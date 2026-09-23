@@ -10,6 +10,7 @@ from app.exceptions import (
     FileTooLargeException,
     InvalidTypeFileException,
     NotAttachmentOwnerException,
+    TooManyAttachmentsException,
 )
 
 
@@ -41,6 +42,10 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(AttachmentNotStoredException)
     async def attachment_not_stored_handler(request, exc):
         return JSONResponse(status_code=409, content={"detail": "Attachment is not stored.", "errors": None})
+
+    @app.exception_handler(TooManyAttachmentsException)
+    async def too_many_attachments_handler(request, exc):
+        return JSONResponse(status_code=429, content={"detail": "Too many attachments.", "errors": None})
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request, exc):
