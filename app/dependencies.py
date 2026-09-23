@@ -1,3 +1,4 @@
+import hmac
 import uuid
 from typing import Annotated
 
@@ -11,7 +12,7 @@ bearer_scheme = HTTPBearer()
 
 
 async def verify_internal_key(x_service_key: str = Header(...)):
-    if x_service_key != settings.INTERNAL_API_KEY:
+    if not hmac.compare_digest(x_service_key, settings.INTERNAL_API_KEY):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 async def get_current_user(
