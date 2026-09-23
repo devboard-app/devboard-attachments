@@ -2,7 +2,7 @@
 
 **The file service.** It handles uploads and keeps the file info. The files themselves live in MinIO (S3-style storage). They never pass through this service.
 
-It powers "images on comments". But it knows nothing about comments. Each file has a generic `context_type` and `context_id`, so it can also serve ticket files, avatars, or anything else later.
+It powers "images on comments". But it knows nothing about comments — the link between a file and a comment lives entirely in devboard-work, which keeps the file ids on the comment. This service used to also carry a generic `context_type`/`context_id` on each file for that link, but nothing ever set it (devboard-work never called it), so the columns were removed rather than left unused.
 
 - **Port:** `8007`
 - **Stack:** FastAPI, PostgreSQL (async SQLAlchemy), MinIO, Alembic
@@ -35,7 +35,6 @@ The client sends the file **straight to MinIO** with a temporary link (a *presig
 1. POST /attachments/request-upload/
    ├─ file type must be allowed
    ├─ size must be under MAX_FILE_SIZE_MB
-   ├─ context must be under MAX_ATTACHMENTS_PER_CONTEXT
    ├─ saves a row with status "pending"
    └─ returns { attachment_id, upload_url }
 
@@ -120,7 +119,6 @@ Copy `.env.example` to `.env`.
 | `S3_ACCESS_KEY` `S3_SECRET_KEY` | MinIO login. |
 | `S3_BUCKET` | Bucket name. Created at start if missing. |
 | `MAX_FILE_SIZE_MB` | Default 5. Checked on the claimed size and on the real size. |
-| `MAX_ATTACHMENTS_PER_CONTEXT` | Default 5. Counts only `stored` files. |
 | `PRESIGNED_URL_TTL_SECONDS` | Default 900. Applies to upload and download links. |
 | `JWT_SECRET` `INTERNAL_API_KEY` | Same values in every service. |
 
@@ -134,7 +132,6 @@ One table: `attachments`.
 |---|---|
 | `id` | UUID. Also the first part of the storage key. |
 | `owner_id` | The JWT `sub` of who asked for the upload. |
-| `context_type` `context_id` | Empty while pending. |
 | `filename` `content_type` | As the client declared. |
 | `size` | Empty until confirmed, then the real size. |
 | `storage_key` | `{id}/{filename}` |
@@ -161,10 +158,8 @@ python -m app.cleanup
 
 ## Not done yet
 
-1. **Nobody queries by context.** devboard-work keeps the file ids on the comment. The context columns are saved but not used to search.
-2. **The batch route takes ids, not a context.** Someone could attach another user's file id to their own comment and get a link. Fix: take `(context_type, context_ids)` instead.
-3. **The per-context limit can be skipped.** It counts only `stored` files, so several uploads requested before any confirm all pass.
-4. **No list route.** A lost attachment id cannot be found again.
-5. **Dev storage only.** MinIO uses root credentials. No bucket policy or lifecycle rules. Production needs a real bucket setup.
+1. **The batch route's ownership check is optional.** `owner_id` isn't required — someone could attach another user's file id to their own comment and get a link. Work sends `owner_id` when creating a comment, but not when reading.
+2. **No list route.** A lost attachment id cannot be found again.
+3. **Dev storage only.** MinIO uses root credentials. No bucket policy or lifecycle rules. Production needs a real bucket setup.
 
 Also missing: a scheduler for the cleanup script.
