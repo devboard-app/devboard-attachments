@@ -20,3 +20,6 @@ class NotAttachmentOwnerException(Exception):
 
 class AttachmentNotStoredException(Exception):
     pass
+
+class TooManyAttachmentsException(Exception):
+    pass
