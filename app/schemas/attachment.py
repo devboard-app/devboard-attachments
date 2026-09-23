@@ -12,8 +12,6 @@ class UploadRequest(BaseModel):
     filename: str
     content_type: str
     size: int
-    context_type: str | None = None
-    context_id: uuid.UUID | None = None
 
     @field_validator("filename")
     @classmethod
@@ -33,8 +31,6 @@ class AttachmentResponse(BaseModel):
     content_type: str
     size: int | None
     status: StatusEnum
-    context_type: str | None
-    context_id: uuid.UUID | None
     created_at: datetime
 
 class ResolveResponse(BaseModel):

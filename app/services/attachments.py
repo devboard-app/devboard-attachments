@@ -14,11 +14,9 @@ from app.exceptions import (
     FileTooLargeException,
     InvalidTypeFileException,
     NotAttachmentOwnerException,
-    TooManyAttachmentsException,
 )
 from app.models.attachment import Attachment, StatusEnum
 from app.repositories.attachment import (
-    count_by_context,
     create_pending,
     delete_attachment,
     get_attachment_by_id,
@@ -72,9 +70,6 @@ async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSess
         raise InvalidTypeFileException()
     if data.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise FileTooLargeException()
-    if data.context_type is not None and data.context_id is not None and await count_by_context(data.context_type, data.context_id, db) >= settings.MAX_ATTACHMENTS_PER_CONTEXT:
-        raise TooManyAttachmentsException()
-
 
     attachment_id = uuid.uuid4()
     storage_key = f"pending/{attachment_id}/{data.filename}"
@@ -86,8 +81,6 @@ async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSess
         content_type=data.content_type,
         size=data.size,
         storage_key=storage_key,
-        context_type=data.context_type,
-        context_id=data.context_id,
         db=db,
     )
     await db.commit()
