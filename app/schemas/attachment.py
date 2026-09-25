@@ -12,6 +12,7 @@ class UploadRequest(BaseModel):
     filename: str
     content_type: str
     size: int
+    is_public: bool = False
 
     @field_validator("filename")
     @classmethod
@@ -32,6 +33,7 @@ class AttachmentResponse(BaseModel):
     size: int | None
     status: StatusEnum
     created_at: datetime
+    public_url: str | None = None
 
 class ResolveResponse(BaseModel):
     url: str
