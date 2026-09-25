@@ -17,6 +17,7 @@ async def create_pending(
     size: int,
     storage_key: str,
     db: AsyncSession,
+    is_public: bool = False,
 ) -> Attachment:
     attachment = Attachment(
         id=attachment_id,
@@ -25,6 +26,7 @@ async def create_pending(
         content_type=content_type,
         size=size,
         storage_key=storage_key,
+        is_public=is_public,
         status=StatusEnum.pending,
     )
     db.add(attachment)

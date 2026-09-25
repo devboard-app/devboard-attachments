@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import cast
@@ -14,6 +15,17 @@ _s3_config = Config(s3={"addressing_style": "path"}, signature_version="s3v4")
 
 _s3: S3Client | None = None
 _public_s3: S3Client | None = None
+
+# Anyone can GET objects under public/ (avatars, banners). Everything else stays presigned-only.
+PUBLIC_READ_POLICY = {
+    "Version": "2012-10-17",
+    "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": ["*"]},
+        "Action": ["s3:GetObject"],
+        "Resource": [f"arn:aws:s3:::{settings.S3_BUCKET}/public/*"],
+    }],
+}
 
 
 @asynccontextmanager
@@ -52,6 +64,7 @@ async def ensure_bucket():
         if e.response.get("Error", {}).get("Code") not in ("404", "NoSuchBucket"):
             raise
         await s3.create_bucket(Bucket=settings.S3_BUCKET)
+    await s3.put_bucket_policy(Bucket=settings.S3_BUCKET, Policy=json.dumps(PUBLIC_READ_POLICY))
 
 async def presign_put(key: str) -> str:
     return await get_public_s3().generate_presigned_url(
@@ -92,18 +105,17 @@ async def download_object(key: str) -> tuple[bytes, str]:
 async def delete_object(key: str) -> None:
     await get_s3().delete_object(Bucket=settings.S3_BUCKET, Key=key)
 
-async def copy_object(src_key: str, dst_key: str, *, if_match: str | None = None) -> None:
-    s3 = get_s3()
+async def copy_object(src_key: str, dst_key: str, *, if_match: str | None = None, content_type: str | None = None) -> None:
+    params = {
+        "Bucket": settings.S3_BUCKET,
+        "CopySource": {"Bucket": settings.S3_BUCKET, "Key": src_key},
+        "Key": dst_key,
+    }
     if if_match is not None:
-        await s3.copy_object(
-            Bucket=settings.S3_BUCKET,
-            CopySource={"Bucket": settings.S3_BUCKET, "Key": src_key},
-            Key=dst_key,
-            CopySourceIfMatch=if_match,
-        )
-    else:
-        await s3.copy_object(
-            Bucket=settings.S3_BUCKET,
-            CopySource={"Bucket": settings.S3_BUCKET, "Key": src_key},
-            Key=dst_key,
-        )
+        params["CopySourceIfMatch"] = if_match
+    if content_type is not None:
+        # Replace whatever Content-Type the client sent on PUT. Public objects are
+        # served as stored, so this stops e.g. an image uploaded as text/html.
+        params["ContentType"] = content_type
+        params["MetadataDirective"] = "REPLACE"
+    await get_s3().copy_object(**params)

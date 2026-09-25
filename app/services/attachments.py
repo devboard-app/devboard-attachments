@@ -70,6 +70,8 @@ ALLOWED_TYPES = set(CONTENT_VALIDATORS)
 async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSession)-> UploadResponse:
     if data.content_type not in ALLOWED_TYPES:
         raise InvalidTypeFileException()
+    if data.is_public and not data.content_type.startswith("image/"):
+        raise InvalidTypeFileException()
     if data.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise FileTooLargeException()
     if await count_by_owner(owner_id, db) >= settings.MAX_ATTACHMENTS_PER_OWNER:
@@ -85,6 +87,7 @@ async def request_upload(data: UploadRequest, owner_id: uuid.UUID, db: AsyncSess
         content_type=data.content_type,
         size=data.size,
         storage_key=storage_key,
+        is_public=data.is_public,
         db=db,
     )
     await db.commit()
@@ -122,9 +125,10 @@ async def confirm_upload(attachment_id: uuid.UUID, owner_id: uuid.UUID, db: Asyn
     if validator is None or not validator(data, attachment.content_type):
         await _rollback(attachment, db)
         raise InvalidTypeFileException()
-    final_key = f"{attachment.id}/{attachment.filename}"
+    prefix = "public/" if attachment.is_public else ""
+    final_key = f"{prefix}{attachment.id}/{attachment.filename}"
     try:
-        await copy_object(attachment.storage_key, final_key, if_match=etag)
+        await copy_object(attachment.storage_key, final_key, if_match=etag, content_type=attachment.content_type)
     except ClientError:
         await _rollback(attachment, db)
         raise FileNotUploadedException()
